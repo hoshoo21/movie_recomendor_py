@@ -1,0 +1,35 @@
+# Python specific
+__pycache__
+*.pyc
+*.pyd
+*.pyo
+*.egg
+*.egg-info/
+
+# Environment
+.env
+.venv
+env/
+venv/
+.movieenv
+
+# Build artifacts
+build/
+dist/
+wheels/
+share/
+lib/
+logs/
+
+# Installer files
+pip-wheel-metadata/
+pipsitepackages.pth
+
+# Testing
+.pytest_cache/
+nosetests.xml
+
+# IDE and editor files
+.idea/  # PyCharm
+.vscode/ # VS Code
+*.swp # vim
