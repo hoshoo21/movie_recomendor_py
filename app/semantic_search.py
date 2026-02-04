@@ -1,29 +1,60 @@
-from sentence_transformers import SentenceTransformer, util
-# Load the model (0.6B is great for speed, 8B for deep semantic accuracy)
-model = SentenceTransformer("Qwen/Qwen3-Embedding-0.6B", trust_remote_code=True)
+import numpy as np 
+import pandas as pd 
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics import DistanceMetric
+from sklearn.decomposition import PCA
+import  matplotlib.pyplot as plt 
+import matplotlib as mpl
+from sklearn.ensemble import RandomForestClassifier 
 
-# 1. Prepare your book data (Documents)
-books = [
-    "The Great Gatsby by F. Scott Fitzgerald - A story of wealth and obsession in the Jazz Age.",
-    "The Hobbit by J.R.R. Tolkien - An adventure of a small hobbit in Middle-earth.",
-    "Foundation by Isaac Asimov - A galactic empire faces collapse and rebirth."
-]
 
-# 2. Encode Books (No prompt needed for the storage phase)
-book_embeddings = model.encode(books)
 
-# 3. Encode Query (MUST use 'query' prompt for retrieval)
-user_query = "a science fiction book about space empires"
-query_embedding = model.encode(
-    user_query, 
-    prompt_name="query"  # Crucial: Tells the model this is a search question
-)
+def load_model(model_name):
+    #all-MiniLM-L6-V2
 
-hits = util.semantic_search(query_embedding, book_embeddings, top_k=2)
+    return SentenceTransformer(model_name)
 
-# 5. Output the results
-print(f"Query: {user_query}\n")
-for hit in hits[0]:
-    book_index = hit['corpus_id']
-    score = hit['score']
-    print(f"Result: {books[book_index]} (Similarity Score: {score:.4f})")
+    
+def encode(model,texts):
+    return model.encode(texts)
+    
+def generate_embeddings(texts, model, batch_size=10):
+    all_embeddings = []
+    print(f"Starting embedding process for {len(texts)} items...")
+    
+    # Process in smaller batches (e.g., 10 resumes at a time)
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i : i + batch_size]
+        print(f"Processing batch {i//batch_size + 1}...")
+        
+        # The actual math happens here
+        batch_encodings = model.encode(batch)
+        all_embeddings.extend(batch_encodings.tolist())
+        
+    print("All embeddings done!")
+    return all_embeddings
+
+def get_query_results(model,query):
+    encode(model,query)
+    
+def generate_scores (raw_data, embeddings):
+    
+    raw_data = raw_data.reset_index(drop=True)
+    embeddings = embeddings.reset_index(drop=True)
+    embeddings['target_role'] = raw_data['role']
+    role_counts = embeddings['target_role'].value_counts()
+    rare_roles = role_counts[role_counts < 3].index
+    embeddings['target_role'] = embeddings['target_role'].replace(rare_roles, 'Other')    
+    X = embeddings.iloc[:,:-1]
+    y = embeddings.iloc[:,-1]
+
+    ctf = RandomForestClassifier(max_depth=2, random_state=0).fit(X,y)
+    pca = PCA(n_components=2).fit(X)
+    
+def get_distance (embeddings, query_embeddings):
+    dist = DistanceMetric.get_metric('euclidean')
+    dist_arr =dist.pairwise(embeddings, query_embeddings.reshape(1,-1)).flatten()
+    print(dist_arr)
+    idist_arr_sorted = dist_arr.argsort()
+    print(idist_arr_sorted)
+    return idist_arr_sorted

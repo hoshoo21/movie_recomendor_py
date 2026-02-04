@@ -8,6 +8,23 @@ load_dotenv()
 
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
    
+
+def connect_mongo_compass():
+    try:
+        
+        mongo_url ="mongodb://127.0.0.1:27017"
+        client = MongoClient(
+            mongo_url,
+        )
+        return client
+    except:
+        print ("connection failed")
+
+
+def find_movies(client):
+    db = client["movies_coll"]
+    collections = db["movies"]
+    return collections.find({},{"plot_embeding_hf":1})
 def embed (sentence):
     embeddings = model.encode(sentence)
     return embeddings
@@ -30,27 +47,32 @@ def connect_mongo():
         return client
     except:
         print ("Mongo db connectivity issue")
-m_client = connect_mongo()
-db = m_client["sample_mflix"]
-collection = db['movies']
+   
+   
 
-query = {
-    "$and": [
-        {"plot": {"$exists": True}},
-        {"plot_embeding_hf": {"$exists": False}}
-    ]
-}
-try :
-    items = collection.find(query)
-except:
-    print ("error fetching records")
-#items = collection.find(query).limit(100)
-count = 0
-for doc in items:
-    content = []
-    content.append(doc["plot"])
-    doc["plot_embeding_hf"] = embed(content).flatten().tolist()
+if __name__ == "__main__":  
    
-    collection.replace_one({'_id':doc["_id"]},doc)
-    count = count+1
-   
+    m_client = connect_mongo()
+    db = m_client["sample_mflix"]
+    collection = db['movies']
+
+    query = {
+        "$and": [
+            {"plot": {"$exists": True}},
+            {"plot_embeding_hf": {"$exists": False}}
+        ]
+    }
+    try :
+        items = collection.find(query)
+    except:
+        print ("error fetching records")
+    #items = collection.find(query).limit(100)
+    count = 0
+    for doc in items:
+        content = []
+        content.append(doc["plot"])
+        doc["plot_embeding_hf"] = embed(content).flatten().tolist()
+    
+        collection.replace_one({'_id':doc["_id"]},doc)
+        count = count+1
+    
